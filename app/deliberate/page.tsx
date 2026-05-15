@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type JSX } from "react";
 import ThemeToggle from "../components/ThemeToggle";
 import KnowledgeFlow from "../components/KnowledgeFlow";
 
