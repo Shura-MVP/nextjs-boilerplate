@@ -1,0 +1,448 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   Dark Mode فقط — متغيرات الثيم السيادي
+   ============================================ */
+@layer base {
+  :root {
+    /* الخلفيات */
+    --bg-primary: 6 7 10;
+    --bg-secondary: 15 18 22;
+    --bg-tertiary: 20 23 29;
+    --bg-elevated: 26 29 36;
+
+    /* النصوص */
+    --text-primary: 245 239 217;
+    --text-secondary: 191 161 90;
+    --text-tertiary: 142 115 51;
+    --text-muted: 100 90 70;
+    --text-faint: 70 65 55;
+
+    /* الذهبي السيادي */
+    --gold-bright: 232 220 174;
+    --gold-base: 191 161 90;
+    --gold-deep: 142 115 51;
+    --gold-shadow: 87 68 32;
+
+    /* الزيتوني العميق */
+    --verdigris-bright: 116 136 103;
+    --verdigris-base: 83 99 72;
+    --verdigris-deep: 47 56 40;
+
+    /* الحدود */
+    --border-subtle: 191 161 90;
+    --border-strong: 191 161 90;
+    --border-glow: 232 220 174;
+
+    /* الحالات */
+    --critical: 160 69 69;
+    --warning: 181 136 56;
+    --info: 74 107 122;
+    --success: 90 122 79;
+
+    /* مستويات السرية */
+    --classification-public: 90 122 79;
+    --classification-internal: 181 136 56;
+    --classification-confidential: 168 104 56;
+    --classification-secret: 160 69 69;
+    --classification-topsecret: 90 45 45;
+  }
+}
+
+/* ============================================
+   الأساس — RTL، الخطوط، الانتقالات السينمائية
+   ============================================ */
+@layer base {
+  * {
+    border-color: rgb(var(--border-subtle) / 0.1);
+  }
+
+  html {
+    direction: rtl;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: rgb(var(--bg-primary));
+    color: rgb(var(--text-primary));
+    font-family: var(--font-tajawal), system-ui, -apple-system, sans-serif;
+    font-feature-settings: "kern", "liga", "calt", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    position: relative;
+    min-height: 100vh;
+  }
+
+  /* تأثير حبيبي فاخر على الخلفية */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 1;
+    mix-blend-mode: overlay;
+  }
+
+  /* العناوين */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-reem-kufi), serif;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: rgb(var(--text-primary));
+  }
+
+  /* النص الإنجليزي */
+  .font-en {
+    font-family: var(--font-cormorant), serif;
+    font-style: italic;
+  }
+
+  .font-mono {
+    font-family: var(--font-jetbrains), monospace;
+  }
+}
+
+/* ============================================
+   مكونات الواجهة السيادية
+   ============================================ */
+@layer components {
+  /* الحاوية الرئيسية */
+  .container-sovereign {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-wide {
+    @apply mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8;
+  }
+
+  /* ============================================
+     البطاقة السيادية — حدود ذهبية رقيقة
+     ============================================ */
+  .panel-sovereign {
+    @apply relative overflow-hidden rounded-2xl border bg-[rgb(var(--bg-secondary))] backdrop-blur-sm transition-all duration-500;
+    border-color: rgb(var(--border-subtle) / 0.15);
+    box-shadow: 
+      inset 0 1px 0 0 rgb(var(--gold-base) / 0.05),
+      0 1px 2px rgb(0 0 0 / 0.4),
+      0 8px 32px rgb(0 0 0 / 0.2);
+  }
+
+  .panel-sovereign:hover {
+    border-color: rgb(var(--border-subtle) / 0.35);
+    box-shadow: 
+      inset 0 1px 0 0 rgb(var(--gold-base) / 0.1),
+      0 1px 2px rgb(0 0 0 / 0.4),
+      0 16px 48px rgb(0 0 0 / 0.3),
+      0 0 32px rgb(var(--gold-base) / 0.08);
+  }
+
+  /* البطاقة المرتفعة */
+  .panel-elevated {
+    @apply relative overflow-hidden rounded-2xl border bg-[rgb(var(--bg-elevated))] backdrop-blur-md;
+    border-color: rgb(var(--border-subtle) / 0.2);
+    box-shadow: 
+      inset 0 1px 0 0 rgb(var(--gold-base) / 0.08),
+      0 4px 16px rgb(0 0 0 / 0.5),
+      0 16px 48px rgb(0 0 0 / 0.3);
+  }
+
+  /* ============================================
+     الأزرار السيادية
+     ============================================ */
+  .btn-sovereign {
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl px-6 py-3 text-sm font-medium transition-all duration-400 ease-sovereign;
+    background: linear-gradient(135deg, rgb(var(--gold-base)) 0%, rgb(var(--gold-deep)) 100%);
+    color: rgb(var(--bg-primary));
+    box-shadow: 
+      inset 0 1px 0 0 rgb(var(--gold-bright) / 0.3),
+      0 2px 8px rgb(var(--gold-base) / 0.2),
+      0 8px 24px rgb(0 0 0 / 0.4);
+  }
+
+  .btn-sovereign:hover {
+    transform: translateY(-1px);
+    box-shadow: 
+      inset 0 1px 0 0 rgb(var(--gold-bright) / 0.4),
+      0 4px 16px rgb(var(--gold-base) / 0.3),
+      0 12px 32px rgb(0 0 0 / 0.5);
+  }
+
+  .btn-sovereign:active {
+    transform: translateY(0);
+  }
+
+  .btn-sovereign:disabled {
+    @apply cursor-not-allowed opacity-50;
+    transform: none;
+  }
+
+  .btn-ghost {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3 text-sm font-medium transition-all duration-400 ease-sovereign;
+    border-color: rgb(var(--border-subtle) / 0.2);
+    background-color: rgb(var(--bg-elevated) / 0.5);
+    color: rgb(var(--text-secondary));
+  }
+
+  .btn-ghost:hover {
+    border-color: rgb(var(--gold-base) / 0.4);
+    color: rgb(var(--gold-bright));
+    background-color: rgb(var(--bg-elevated));
+  }
+
+  /* ============================================
+     خطوط زخرفية ذهبية
+     ============================================ */
+  .gold-line {
+    @apply relative h-px w-full;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(var(--gold-base) / 0.6) 50%,
+      transparent 100%
+    );
+  }
+
+  .gold-line-thick {
+    @apply relative h-0.5 w-full;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(var(--gold-base)) 50%,
+      transparent 100%
+    );
+  }
+
+  /* عنوان مع شريط ذهبي */
+  .heading-bar {
+    @apply relative pr-5;
+  }
+
+  .heading-bar::before {
+    content: "";
+    @apply absolute right-0 top-1/2 h-[80%] w-1 -translate-y-1/2 rounded-full;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--gold-bright)) 0%,
+      rgb(var(--gold-base)) 50%,
+      rgb(var(--gold-deep)) 100%
+    );
+    box-shadow: 0 0 12px rgb(var(--gold-base) / 0.4);
+  }
+
+  /* ============================================
+     تأثير زجاجي فاخر
+     ============================================ */
+  .glass-sovereign {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background-color: rgb(var(--bg-primary) / 0.75);
+    border: 1px solid rgb(var(--border-subtle) / 0.15);
+  }
+
+  /* ============================================
+     شارة السرية
+     ============================================ */
+  .classification-badge {
+    @apply inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider;
+    font-family: var(--font-jetbrains), monospace;
+  }
+
+  .classification-public {
+    @apply border-[rgb(var(--classification-public))] bg-[rgb(var(--classification-public))]/10 text-[rgb(var(--classification-public))];
+  }
+
+  .classification-internal {
+    @apply border-[rgb(var(--classification-internal))] bg-[rgb(var(--classification-internal))]/10 text-[rgb(var(--classification-internal))];
+  }
+
+  .classification-confidential {
+    @apply border-[rgb(var(--classification-confidential))] bg-[rgb(var(--classification-confidential))]/10 text-[rgb(var(--classification-confidential))];
+  }
+
+  .classification-secret {
+    @apply border-[rgb(var(--classification-secret))] bg-[rgb(var(--classification-secret))]/10 text-[rgb(var(--classification-secret))];
+  }
+
+  .classification-topsecret {
+    @apply border-[rgb(var(--classification-topsecret))] bg-[rgb(var(--classification-topsecret))]/15 text-[rgb(var(--classification-secret))];
+  }
+
+  /* ============================================
+     شارة الوكيل
+     ============================================ */
+  .agent-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium;
+    border-color: rgb(var(--gold-base) / 0.3);
+    background-color: rgb(var(--gold-base) / 0.05);
+    color: rgb(var(--gold-bright));
+  }
+}
+
+/* ============================================
+   مرافق إضافية
+   ============================================ */
+@layer utilities {
+  /* إخفاء scrollbar */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* نص ذهبي متدرج */
+  .text-gold {
+    background: linear-gradient(
+      135deg,
+      rgb(var(--gold-bright)) 0%,
+      rgb(var(--gold-base)) 50%,
+      rgb(var(--gold-deep)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-gold-bright {
+    color: rgb(var(--gold-bright));
+  }
+
+  .text-gold-base {
+    color: rgb(var(--gold-base));
+  }
+
+  /* تأثير وميض ذهبي */
+  .shimmer-gold {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--gold-deep)) 0%,
+      rgb(var(--gold-bright)) 50%,
+      rgb(var(--gold-deep)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmerGold 3s linear infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* اقتطاع النصوص الطويلة */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* تأثير ضوء كاميرا */
+  .vignette {
+    position: relative;
+  }
+
+  .vignette::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 40%,
+      rgb(var(--bg-primary) / 0.6) 100%
+    );
+  }
+}
+
+/* ============================================
+   احترام تفضيلات المستخدم
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================
+   الطباعة
+   ============================================ */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  body::before {
+    display: none;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ============================================
+   التحديد
+   ============================================ */
+::selection {
+  background-color: rgb(var(--gold-base) / 0.3);
+  color: rgb(var(--gold-bright));
+}
+
+/* ============================================
+   Scrollbar مخصص
+   ============================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--bg-secondary));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--gold-deep) / 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--gold-base) / 0.7);
+}
+
+/* ============================================
+   إصلاحات Safari iOS
+   ============================================ */
+@supports (-webkit-touch-callout: none) {
+  body {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* ============================================
+   شعار شــورى — حالات خاصة
+   ============================================ */
+.logo-engraved {
+  filter: drop-shadow(0 1px 0 rgb(var(--gold-bright) / 0.2))
+    drop-shadow(0 -1px 0 rgb(0 0 0 / 0.4));
+}
