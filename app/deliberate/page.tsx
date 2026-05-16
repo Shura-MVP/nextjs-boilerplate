@@ -10,7 +10,8 @@ import {
   FileDown,
   RotateCcw,
 } from "lucide-react";
-import AmbientBackground from "../components/AmbientBackground";
+import dynamic from "next/dynamic";
+const AmbientBackground = dynamic(() => import("../components/AmbientBackground"), { ssr: false });
 import ShuraLogo from "../components/ShuraLogo";
 import {
   ClassificationBadge,
