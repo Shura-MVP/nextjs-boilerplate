@@ -1,9 +1,13 @@
 "use client";
 
-import { Printer } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { Printer, X, FileText } from "lucide-react";
 import type { ClassificationLevel } from "./ClassificationBadge";
 
+// ============================================
+// أنواع البيانات
+// ============================================
 interface PrintLayoutProps {
   referenceNumber: string;
   timestamp: string;
@@ -18,642 +22,472 @@ interface PrintLayoutProps {
 }
 
 // ============================================
-// إعدادات السرية للطباعة
+// تسميات التصنيف
 // ============================================
-const PRINT_CLASSIFICATION = {
-  public: { label: "عــام", labelEn: "PUBLIC", color: "#5A7A4F" },
-  internal: {
-    label: "للاستخدام الداخلي",
-    labelEn: "INTERNAL USE ONLY",
-    color: "#8E7333",
-  },
-  confidential: {
-    label: "مُقيَّـد",
-    labelEn: "CONFIDENTIAL",
-    color: "#A86838",
-  },
-  secret: { label: "ســـري", labelEn: "SECRET", color: "#A04545" },
-  topsecret: {
-    label: "ســري للغاية",
-    labelEn: "TOP SECRET",
-    color: "#5A2D2D",
-  },
+const CLASSIFICATION_AR: Record<ClassificationLevel, string> = {
+  public: "عــام",
+  internal: "للاستخدام الداخلي",
+  confidential: "مُقيَّـد",
+  secret: "ســـري",
+  topsecret: "ســري للغاية",
+};
+
+const CLASSIFICATION_EN: Record<ClassificationLevel, string> = {
+  public: "PUBLIC",
+  internal: "INTERNAL USE",
+  confidential: "CONFIDENTIAL",
+  secret: "SECRET",
+  topsecret: "TOP SECRET",
 };
 
 // ============================================
 // المكوّن الرئيسي
 // ============================================
-export default function PrintLayout(props: PrintLayoutProps) {
-  const [isPrinting, setIsPrinting] = useState(false);
+export default function PrintLayout({
+  referenceNumber,
+  timestamp,
+  classification,
+  question,
+  summaryText,
+  citations,
+  reasoning,
+  gaps,
+  confidence,
+  agentsInvoked,
+}: PrintLayoutProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
+  // ============================================
+  // التأكد من التحميل في المتصفح (Hydration-safe)
+  // ============================================
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // ============================================
+  // قفل التمرير عند فتح المعاينة
+  // ============================================
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  // ============================================
+  // الإغلاق بمفتاح Escape
+  // ============================================
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen]);
+
+  // ============================================
+  // الطباعة
+  // ============================================
   const handlePrint = () => {
-    setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-    }, 100);
+    window.print();
   };
 
-  return (
-    <>
-      {/* ============================================
-          زر الطباعة — يختفي عند الطباعة
-          ============================================ */}
-      <button
-        type="button"
-        onClick={handlePrint}
-        disabled={isPrinting}
-        className="btn-ghost no-print group/print"
-        aria-label="طباعة التقرير"
-      >
-        <Printer
-          className="h-4 w-4 transition-transform group-hover/print:scale-110"
-          strokeWidth={2}
-        />
-        <span>طباعة التقرير</span>
-      </button>
+  // ============================================
+  // تنسيق التاريخ
+  // ============================================
+  const formattedDate = (() => {
+    try {
+      return new Date(timestamp).toLocaleString("ar-SA", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return timestamp;
+    }
+  })();
 
-      {/* ============================================
-          محتوى الطباعة — مخفي بصرياً، يظهر فقط عند الطباعة
-          ============================================ */}
-      <PrintableContent {...props} />
-    </>
-  );
-}
-
-// ============================================
-// المحتوى القابل للطباعة
-// ============================================
-function PrintableContent(props: PrintLayoutProps) {
-  const cls = PRINT_CLASSIFICATION[props.classification];
-  const formattedDate = formatPrintDate(props.timestamp);
-  const cleanText = stripMarkers(props.summaryText);
-
-  return (
-    <div className="print-only" aria-hidden="true">
-      <style jsx global>{`
-        @media screen {
-          .print-only {
-            display: none !important;
-          }
-        }
-
+  // ============================================
+  // محتوى المعاينة (يُحقن في document.body عبر Portal)
+  // ============================================
+  const previewContent = (
+    <div
+      data-shura-print-portal
+      className="fixed inset-0 z-[100] overflow-y-auto bg-black/90 backdrop-blur-md"
+      role="dialog"
+      aria-modal="true"
+      aria-label="معاينة التقرير"
+    >
+      {/* أنماط الطباعة (تُحقن مع البوابة) */}
+      <style>{`
         @media print {
-          /* إعدادات الصفحة */
           @page {
             size: A4;
-            margin: 1.5cm 1.8cm;
+            margin: 1.5cm;
           }
-
-          /* إخفاء كل شيء عدا منطقة الطباعة */
-          body * {
-            visibility: hidden;
-          }
-
-          .print-only,
-          .print-only * {
-            visibility: visible;
-          }
-
-          .print-only {
-            display: block !important;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            direction: rtl;
-            font-family: "Tajawal", "Arial", sans-serif;
-            color: #1a2419;
-            background: white;
-          }
-
-          /* إخفاء العناصر التفاعلية */
-          .no-print {
+          body > *:not([data-shura-print-portal]) {
             display: none !important;
           }
-
-          /* تحسين الألوان للطباعة */
-          .print-only h1,
-          .print-only h2,
-          .print-only h3 {
-            color: #1a2419;
-            page-break-after: avoid;
+          [data-shura-print-portal] {
+            position: static !important;
+            background: white !important;
+            backdrop-filter: none !important;
+            overflow: visible !important;
           }
-
-          .print-only .page-break {
-            page-break-before: always;
+          [data-shura-print-portal] .shura-print-toolbar {
+            display: none !important;
           }
-
-          .print-only .avoid-break {
-            page-break-inside: avoid;
+          [data-shura-print-portal] .shura-print-paper {
+            box-shadow: none !important;
+            margin: 0 !important;
+            max-width: none !important;
+            padding: 0 !important;
           }
         }
       `}</style>
 
       {/* ============================================
-          ترويسة الصفحة
+          شريط الأدوات (يُخفى عند الطباعة)
           ============================================ */}
-      <header
+      <div className="shura-print-toolbar sticky top-0 z-10 border-b border-[rgb(var(--border-subtle))]/20 bg-[rgb(var(--bg-primary))]/95 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-2 rounded-lg border border-[rgb(var(--border-subtle))]/20 bg-[rgb(var(--bg-elevated))]/40 px-3 py-2 text-sm text-[rgb(var(--text-secondary))] backdrop-blur-sm transition-all hover:border-[rgb(var(--gold-base))]/40 hover:text-[rgb(var(--gold-bright))]"
+            aria-label="إغلاق المعاينة"
+          >
+            <X className="h-4 w-4" strokeWidth={2} />
+            <span>إغلاق</span>
+          </button>
+
+          <div className="hidden sm:block">
+            <p className="font-display text-sm text-[rgb(var(--text-muted))]">
+              معاينة التقرير قبل الطباعة
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="flex items-center gap-2 rounded-lg border border-[rgb(var(--gold-base))] bg-gradient-to-b from-[rgb(var(--gold-base))] to-[rgb(var(--gold-deep))] px-4 py-2 text-sm font-semibold text-[rgb(var(--bg-primary))] shadow-md transition-all hover:brightness-110"
+            aria-label="طباعة أو حفظ PDF"
+          >
+            <Printer className="h-4 w-4" strokeWidth={2.5} />
+            <span>طباعة / حفظ PDF</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ============================================
+          ورقة التقرير (التنسيق الرسمي)
+          ============================================ */}
+      <div
+        dir="rtl"
+        className="shura-print-paper mx-auto my-6 max-w-4xl bg-white px-10 py-12 text-[#1A1D24] shadow-2xl sm:my-10"
         style={{
-          borderBottom: "3pt solid #BFA15A",
-          paddingBottom: "12pt",
-          marginBottom: "16pt",
+          fontFamily:
+            "var(--font-tajawal), 'Tajawal', system-ui, sans-serif",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexDirection: "row-reverse",
-          }}
-        >
-          {/* الشعار والاسم */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10pt",
-              flexDirection: "row-reverse",
-            }}
-          >
-            <div
-              style={{
-                width: "44pt",
-                height: "44pt",
-                background: "#BFA15A",
-                borderRadius: "22pt",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <span
+        {/* ============================================
+            الترويسة الرسمية
+            ============================================ */}
+        <header className="mb-10 border-b-[3px] border-double border-[#BFA15A] pb-6">
+          <div className="flex items-start justify-between gap-6">
+            <div className="flex-1">
+              <h1
+                className="text-3xl font-bold leading-tight text-[#1A1D24]"
                 style={{
-                  color: "#0F1216",
-                  fontSize: "18pt",
-                  fontWeight: 700,
-                }}
-              >
-                ش
-              </span>
-            </div>
-            <div>
-              <div
-                style={{
-                  fontSize: "20pt",
-                  fontWeight: 700,
-                  color: "#1A2419",
-                  marginBottom: "2pt",
+                  fontFamily:
+                    "var(--font-reem-kufi), 'Reem Kufi', serif",
                 }}
               >
                 شــورى
-              </div>
-              <div
+              </h1>
+              <p
+                className="mt-1 text-[11px] uppercase tracking-[0.3em] text-[#8E7333]"
                 style={{
-                  fontSize: "9pt",
-                  color: "#8E7333",
-                  letterSpacing: "2pt",
-                  fontStyle: "italic",
+                  fontFamily:
+                    "var(--font-mono), 'JetBrains Mono', monospace",
                 }}
               >
-                SHURA MAG
+                SHURA MAG · Strategic Deliberation System
+              </p>
+              <p className="mt-3 text-xs leading-relaxed text-[#574420]">
+                المحرّك المعرفي السيادي لـ مركز دعم اتخاذ القرار
+              </p>
+            </div>
+
+            {/* شارة التصنيف */}
+            <div className="flex-shrink-0">
+              <div className="rounded-md border-[2px] border-[#8E7333] bg-[#F5EFD9] px-4 py-2 text-center">
+                <p
+                  className="text-sm font-bold text-[#574420]"
+                  style={{
+                    fontFamily:
+                      "var(--font-reem-kufi), 'Reem Kufi', serif",
+                  }}
+                >
+                  {CLASSIFICATION_AR[classification]}
+                </p>
+                <p
+                  className="mt-0.5 text-[9px] uppercase tracking-[0.2em] text-[#8E7333]"
+                  style={{
+                    fontFamily:
+                      "var(--font-mono), 'JetBrains Mono', monospace",
+                  }}
+                >
+                  {CLASSIFICATION_EN[classification]}
+                </p>
               </div>
             </div>
           </div>
+        </header>
 
-          {/* الرقم المرجعي */}
-          <div style={{ textAlign: "left" }}>
-            <div
-              style={{
-                fontSize: "7pt",
-                color: "#8E7333",
-                letterSpacing: "1.5pt",
-                marginBottom: "2pt",
-              }}
-            >
-              REFERENCE
-            </div>
-            <div
-              style={{
-                fontSize: "11pt",
-                fontWeight: 700,
-                color: "#1A2419",
-              }}
-            >
-              {props.referenceNumber}
-            </div>
-          </div>
-        </div>
-      </header>
+        {/* ============================================
+            بطاقة معلومات التقرير
+            ============================================ */}
+        <section className="mb-8">
+          <table className="w-full border-collapse text-sm">
+            <tbody>
+              <tr className="border-b border-[#E8DCAE]">
+                <td className="w-1/3 bg-[#F5EFD9] px-4 py-2.5 font-semibold text-[#574420]">
+                  الرقم المرجعي
+                </td>
+                <td
+                  className="px-4 py-2.5 text-[#1A1D24]"
+                  style={{
+                    fontFamily:
+                      "var(--font-mono), 'JetBrains Mono', monospace",
+                  }}
+                >
+                  {referenceNumber}
+                </td>
+              </tr>
+              <tr className="border-b border-[#E8DCAE]">
+                <td className="bg-[#F5EFD9] px-4 py-2.5 font-semibold text-[#574420]">
+                  التاريخ والوقت
+                </td>
+                <td className="px-4 py-2.5 text-[#1A1D24]">
+                  {formattedDate}
+                </td>
+              </tr>
+              <tr className="border-b border-[#E8DCAE]">
+                <td className="bg-[#F5EFD9] px-4 py-2.5 font-semibold text-[#574420]">
+                  عدد الوكلاء المُستدعَين
+                </td>
+                <td className="px-4 py-2.5 text-[#1A1D24]">
+                  {agentsInvoked} وكيل
+                </td>
+              </tr>
+              <tr>
+                <td className="bg-[#F5EFD9] px-4 py-2.5 font-semibold text-[#574420]">
+                  دقة التحليل
+                </td>
+                <td className="px-4 py-2.5 text-[#1A1D24]">
+                  <span className="font-semibold">{confidence}%</span>
+                  <span className="ms-2 text-xs text-[#8E7333]">
+                    ({confidence >= 75 ? "عالية" : confidence >= 50 ? "متوسطة" : "محدودة"})
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
 
-      {/* ============================================
-          شارة السرية
-          ============================================ */}
-      <div
-        style={{
-          background: `${cls.color}15`,
-          border: `1pt solid ${cls.color}`,
-          padding: "6pt 12pt",
-          marginBottom: "16pt",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexDirection: "row-reverse",
-          borderRadius: "4pt",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "10pt",
-            fontWeight: 700,
-            letterSpacing: "2pt",
-            color: cls.color,
-          }}
-        >
-          {cls.labelEn} — {cls.label}
-        </div>
-        <div
-          style={{
-            fontSize: "8pt",
-            color: "#5A4420",
-            fontStyle: "italic",
-          }}
-        >
-          {formattedDate}
-        </div>
-      </div>
-
-      {/* ============================================
-          العنوان الرئيسي
-          ============================================ */}
-      <div style={{ marginBottom: "20pt" }}>
-        <h1
-          style={{
-            fontSize: "22pt",
-            fontWeight: 700,
-            color: "#1A2419",
-            textAlign: "right",
-            marginBottom: "4pt",
-          }}
-        >
-          الموجز الاستراتيجي
-        </h1>
-        <div
-          style={{
-            fontSize: "11pt",
-            color: "#735B28",
-            fontStyle: "italic",
-            letterSpacing: "1pt",
-            textAlign: "right",
-          }}
-        >
-          Executive Strategic Summary
-        </div>
-
-        <div
-          style={{
-            height: "2pt",
-            background: "#BFA15A",
-            marginTop: "12pt",
-          }}
-        />
-      </div>
-
-      {/* ============================================
-          السؤال الاستراتيجي
-          ============================================ */}
-      <div
-        className="avoid-break"
-        style={{
-          background: "#F5F0E3",
-          border: "1pt solid #D4BE7E",
-          borderRadius: "4pt",
-          padding: "12pt 16pt",
-          marginBottom: "20pt",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "9pt",
-            color: "#8E7333",
-            letterSpacing: "1.5pt",
-            marginBottom: "6pt",
-            fontWeight: 500,
-          }}
-        >
-          السؤال الاستراتيجي
-        </div>
-        <div
-          style={{
-            fontSize: "13pt",
-            fontWeight: 500,
-            color: "#1A2419",
-            lineHeight: 1.7,
-          }}
-        >
-          {props.question}
-        </div>
-      </div>
-
-      {/* ============================================
-          المؤشرات السريعة
-          ============================================ */}
-      <div
-        className="avoid-break"
-        style={{
-          display: "flex",
-          gap: "8pt",
-          marginBottom: "20pt",
-          flexDirection: "row-reverse",
-        }}
-      >
-        <MetricBox
-          label="دقة التحليل"
-          labelEn="Confidence"
-          value={`${props.confidence}%`}
-        />
-        <MetricBox
-          label="الوكلاء المُستدعَون"
-          labelEn="Agents"
-          value={String(props.agentsInvoked)}
-        />
-        <MetricBox
-          label="الاستشهادات"
-          labelEn="Citations"
-          value={String(props.citations.length)}
-        />
-        <MetricBox
-          label="الفجوات المعرفية"
-          labelEn="Gaps"
-          value={String(props.gaps.length)}
-        />
-      </div>
-
-      {/* ============================================
-          الخلاصة التنفيذية
-          ============================================ */}
-      <SectionHeader
-        title="الخلاصة التنفيذية"
-        titleEn="Executive Summary"
-      />
-
-      <div
-        style={{
-          fontSize: "11pt",
-          color: "#2D4230",
-          lineHeight: 1.9,
-          textAlign: "right",
-          marginBottom: "24pt",
-        }}
-      >
-        {cleanText.split("\n\n").map((paragraph, idx) => (
-          <p
-            key={idx}
-            style={{ marginBottom: "10pt" }}
+        {/* ============================================
+            السؤال الاستراتيجي
+            ============================================ */}
+        <section className="mb-8 break-inside-avoid">
+          <h2
+            className="mb-3 border-r-[5px] border-[#BFA15A] pr-4 text-lg font-bold text-[#1A1D24]"
+            style={{
+              fontFamily: "var(--font-reem-kufi), 'Reem Kufi', serif",
+            }}
           >
-            {paragraph}
-          </p>
-        ))}
-      </div>
+            السؤال الاستراتيجي
+          </h2>
+          <p className="leading-loose text-[#1A1D24]">{question}</p>
+        </section>
 
-      {/* ============================================
-          الاستشهادات
-          ============================================ */}
-      {props.citations.length > 0 && (
-        <div className="avoid-break">
-          <SectionHeader
-            title="قائمة الاستشهادات"
-            titleEn="Citations Register"
-          />
-
-          <div style={{ marginBottom: "20pt" }}>
-            {props.citations.map((citation, idx) => (
-              <CitationItem
-                key={idx}
-                index={idx + 1}
-                content={citation}
-              />
-            ))}
+        {/* ============================================
+            الموجز الاستراتيجي
+            ============================================ */}
+        <section className="mb-8">
+          <h2
+            className="mb-4 border-r-[5px] border-[#BFA15A] pr-4 text-lg font-bold text-[#1A1D24]"
+            style={{
+              fontFamily: "var(--font-reem-kufi), 'Reem Kufi', serif",
+            }}
+          >
+            الموجز الاستراتيجي
+          </h2>
+          <div className="whitespace-pre-wrap leading-loose text-[#1A1D24]">
+            {summaryText}
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* ============================================
-          الفجوات المعرفية
-          ============================================ */}
-      {props.gaps.length > 0 && (
-        <div className="avoid-break">
-          <SectionHeader
-            title="الفجوات المعرفية"
-            titleEn="Knowledge Gaps"
-          />
+        {/* ============================================
+            الاستشهادات والمصادر
+            ============================================ */}
+        {citations.length > 0 && (
+          <section className="mb-8 break-inside-avoid">
+            <h2
+              className="mb-3 border-r-[5px] border-[#536348] pr-4 text-lg font-bold text-[#1A1D24]"
+              style={{
+                fontFamily: "var(--font-reem-kufi), 'Reem Kufi', serif",
+              }}
+            >
+              الاستشهادات والمصادر
+            </h2>
+            <ol className="space-y-2 pr-6">
+              {citations.map((c, i) => (
+                <li
+                  key={i}
+                  className="text-sm leading-relaxed text-[#1A1D24]"
+                >
+                  <span
+                    className="me-2 inline-block font-semibold text-[#8E7333]"
+                    style={{
+                      fontFamily:
+                        "var(--font-mono), 'JetBrains Mono', monospace",
+                    }}
+                  >
+                    [{i + 1}]
+                  </span>
+                  {c}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
 
-          <div style={{ marginBottom: "20pt" }}>
-            {props.gaps.map((gap, idx) => (
-              <CitationItem
-                key={idx}
-                index={idx + 1}
-                content={gap}
-              />
-            ))}
+        {/* ============================================
+            التعليلات المنطقية
+            ============================================ */}
+        {reasoning.length > 0 && (
+          <section className="mb-8 break-inside-avoid">
+            <h2
+              className="mb-3 border-r-[5px] border-[#536348] pr-4 text-lg font-bold text-[#1A1D24]"
+              style={{
+                fontFamily: "var(--font-reem-kufi), 'Reem Kufi', serif",
+              }}
+            >
+              التعليلات المنطقية
+            </h2>
+            <ol className="space-y-2 pr-6">
+              {reasoning.map((r, i) => (
+                <li
+                  key={i}
+                  className="text-sm leading-relaxed text-[#1A1D24]"
+                >
+                  <span
+                    className="me-2 inline-block font-semibold text-[#536348]"
+                    style={{
+                      fontFamily:
+                        "var(--font-mono), 'JetBrains Mono', monospace",
+                    }}
+                  >
+                    [{i + 1}]
+                  </span>
+                  {r}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {/* ============================================
+            الفجوات المعرفية
+            ============================================ */}
+        {gaps.length > 0 && (
+          <section className="mb-8 break-inside-avoid">
+            <h2
+              className="mb-3 border-r-[5px] border-[#8E7333] pr-4 text-lg font-bold text-[#1A1D24]"
+              style={{
+                fontFamily: "var(--font-reem-kufi), 'Reem Kufi', serif",
+              }}
+            >
+              الفجوات المعرفية
+            </h2>
+            <ol className="space-y-2 pr-6">
+              {gaps.map((g, i) => (
+                <li
+                  key={i}
+                  className="text-sm leading-relaxed text-[#1A1D24]"
+                >
+                  <span
+                    className="me-2 inline-block font-semibold text-[#8E7333]"
+                    style={{
+                      fontFamily:
+                        "var(--font-mono), 'JetBrains Mono', monospace",
+                    }}
+                  >
+                    [{i + 1}]
+                  </span>
+                  {g}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {/* ============================================
+            التذييل الرسمي
+            ============================================ */}
+        <footer className="mt-12 border-t-[3px] border-double border-[#BFA15A] pt-6">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <p
+              className="text-xs text-[#574420]"
+              style={{
+                fontFamily: "var(--font-reem-kufi), 'Reem Kufi', serif",
+              }}
+            >
+              نموذج أوّلي قابل للتجربة لـ مركز دعم اتخاذ القرار
+            </p>
+            <p
+              className="text-[10px] uppercase tracking-[0.25em] text-[#8E7333]"
+              style={{
+                fontFamily:
+                  "var(--font-mono), 'JetBrains Mono', monospace",
+              }}
+            >
+              Sovereign Knowledge Engine · {referenceNumber}
+            </p>
           </div>
-        </div>
-      )}
+        </footer>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* ============================================
+          زر فتح المعاينة (يظهر ضمن الواجهة العادية)
+          ============================================ */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="btn-sovereign w-full sm:w-auto"
+        aria-label="عرض التقرير وطباعته"
+      >
+        <FileText className="h-4 w-4" strokeWidth={2} />
+        <span>عرض التقرير وطباعته</span>
+      </button>
 
       {/* ============================================
-          التذييل
+          المعاينة (تُحقن في body عبر Portal)
           ============================================ */}
-      <footer
-        style={{
-          borderTop: "1pt solid #BFA15A",
-          paddingTop: "10pt",
-          marginTop: "30pt",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexDirection: "row-reverse",
-          fontSize: "8pt",
-          color: "#5A4420",
-        }}
-      >
-        <div style={{ fontStyle: "italic" }}>
-          نموذج أوّلي قابل للتجربة — مركز دعم اتخاذ القرار
-        </div>
-        <div style={{ fontFamily: "monospace" }}>{props.referenceNumber}</div>
-      </footer>
-    </div>
+      {mounted && isOpen && createPortal(previewContent, document.body)}
+    </>
   );
-}
-
-// ============================================
-// عنوان قسم
-// ============================================
-function SectionHeader({
-  title,
-  titleEn,
-}: {
-  title: string;
-  titleEn: string;
-}) {
-  return (
-    <div style={{ marginBottom: "12pt", marginTop: "20pt" }}>
-      <h2
-        style={{
-          fontSize: "14pt",
-          fontWeight: 700,
-          color: "#1A2419",
-          textAlign: "right",
-          paddingRight: "10pt",
-          borderRight: "3pt solid #BFA15A",
-          marginBottom: "2pt",
-        }}
-      >
-        {title}
-      </h2>
-      <div
-        style={{
-          fontSize: "9pt",
-          color: "#735B28",
-          fontStyle: "italic",
-          letterSpacing: "1pt",
-          textAlign: "right",
-        }}
-      >
-        {titleEn}
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// صندوق مؤشر
-// ============================================
-function MetricBox({
-  label,
-  labelEn,
-  value,
-}: {
-  label: string;
-  labelEn: string;
-  value: string;
-}) {
-  return (
-    <div
-      style={{
-        flex: 1,
-        background: "#0F1216",
-        padding: "10pt 12pt",
-        borderRadius: "4pt",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "7pt",
-          color: "#BFA15A",
-          letterSpacing: "1pt",
-          marginBottom: "3pt",
-          textAlign: "right",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: "18pt",
-          fontWeight: 700,
-          color: "#E8DCAE",
-          textAlign: "right",
-          lineHeight: 1.1,
-        }}
-      >
-        {value}
-      </div>
-      <div
-        style={{
-          fontSize: "7pt",
-          color: "#BFA15A",
-          textAlign: "right",
-          marginTop: "2pt",
-          fontStyle: "italic",
-        }}
-      >
-        {labelEn}
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// عنصر استشهاد
-// ============================================
-function CitationItem({
-  index,
-  content,
-}: {
-  index: number;
-  content: string;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: "8pt",
-        marginBottom: "6pt",
-        paddingBottom: "6pt",
-        borderBottom: "0.5pt solid #E0D9BD",
-        flexDirection: "row-reverse",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "9pt",
-          color: "#8E7333",
-          fontWeight: 700,
-          minWidth: "24pt",
-        }}
-      >
-        [{index}]
-      </div>
-      <div
-        style={{
-          flex: 1,
-          fontSize: "9pt",
-          color: "#2D4230",
-          lineHeight: 1.6,
-          textAlign: "right",
-        }}
-      >
-        {content}
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// أدوات مساعدة
-// ============================================
-function formatPrintDate(iso: string): string {
-  try {
-    const date = new Date(iso);
-    return date.toLocaleString("ar-SA", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function stripMarkers(text: string): string {
-  return text
-    .replace(/\[cite:[^\]]+\]/gi, "")
-    .replace(/\[reasoning:[^\]]+\]/gi, "")
-    .replace(/\[gap:[^\]]+\]/gi, "")
-    .replace(/\s+/g, " ")
-    .replace(/\n\s*\n/g, "\n\n")
-    .trim();
 }
