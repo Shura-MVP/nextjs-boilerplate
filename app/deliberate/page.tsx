@@ -7,11 +7,9 @@ import {
   ArrowLeft,
   AlertCircle,
   Sparkles,
-  FileDown,
   RotateCcw,
 } from "lucide-react";
-import dynamic from "next/dynamic";
-const AmbientBackground = dynamic(() => import("../components/AmbientBackground"), { ssr: false });
+import AmbientBackground from "../components/AmbientBackground";
 import ShuraLogo from "../components/ShuraLogo";
 import {
   ClassificationBadge,
@@ -19,11 +17,7 @@ import {
 } from "../components/ClassificationBadge";
 import SplitScreenResult from "../components/SplitScreenResult";
 import PrintLayout from "../components/PrintLayout";
-import {
-  generatePDF,
-  generateReferenceNumber,
-  type PDFData,
-} from "../components/PDFExport";
+import { generateReferenceNumber } from "../components/PDFExport";
 
 // ============================================
 // أنواع البيانات
@@ -91,7 +85,6 @@ export default function DeliberatePage() {
   const [error, setError] = useState<string | null>(null);
   const [stageIndex, setStageIndex] = useState(0);
   const [referenceNumber] = useState(() => generateReferenceNumber());
-  const [isExporting, setIsExporting] = useState(false);
 
   // ============================================
   // جلب البيانات من sessionStorage
@@ -169,37 +162,6 @@ export default function DeliberatePage() {
   const handleNewDeliberation = () => {
     sessionStorage.removeItem("shura-deliberation");
     router.push("/");
-  };
-
-  // ============================================
-  // تصدير PDF
-  // ============================================
-  const handleExportPDF = async () => {
-    if (!result || !payload) return;
-
-    setIsExporting(true);
-    try {
-      const pdfData: PDFData = {
-        referenceNumber,
-        timestamp: result.timestamp,
-        classification: payload.classification,
-        question: payload.query,
-        summaryText: result.synthesis.text,
-        citations: result.evidence.citations,
-        reasoning: result.evidence.reasoning,
-        gaps: result.evidence.gaps,
-        confidence: result.synthesis.confidence,
-        riskLevel: result.synthesis.riskLevel,
-        agentsInvoked: result.stats.agentsInvoked,
-      };
-
-      await generatePDF(pdfData);
-    } catch (err) {
-      console.error(err);
-      alert("تعذّر توليد التقرير. حاول مرة أخرى.");
-    } finally {
-      setIsExporting(false);
-    }
   };
 
   return (
@@ -417,33 +379,6 @@ export default function DeliberatePage() {
                   transition={{ delay: 0.4 }}
                   className="no-print flex flex-col items-center justify-center gap-3 border-t border-[rgb(var(--border-subtle))]/10 pt-8 sm:flex-row"
                 >
-                  <button
-                    onClick={handleExportPDF}
-                    disabled={isExporting}
-                    className="btn-sovereign w-full sm:w-auto"
-                  >
-                    {isExporting ? (
-                      <>
-                        <svg
-                          className="h-4 w-4 animate-spin"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                        >
-                          <circle cx="12" cy="12" r="10" strokeOpacity="0.3" />
-                          <path d="M12 2a10 10 0 0 1 10 10" />
-                        </svg>
-                        <span>جارٍ التوليد</span>
-                      </>
-                    ) : (
-                      <>
-                        <FileDown className="h-4 w-4" strokeWidth={2} />
-                        <span>تصدير PDF</span>
-                      </>
-                    )}
-                  </button>
-
                   <PrintLayout
                     referenceNumber={referenceNumber}
                     timestamp={result.timestamp}
