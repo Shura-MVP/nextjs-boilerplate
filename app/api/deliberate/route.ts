@@ -310,7 +310,7 @@ async function invokeAgent(
     : `السؤال الاستراتيجي:\n${query}${classificationContext}\n\nقدّم تحليلك من زاوية تخصصك.`;
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 2500,
     system: agent.systemPrompt,
     messages: [{ role: "user", content: userMessage }],
